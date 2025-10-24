@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Missões - Loja de Seminovos</title>
+    <!-- Tailwind CSS para um design moderno e responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Biblioteca de ícones Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Fonte Inter do Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://css.gg/css?family=Inter:400,500,600,700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilização para aplicar a fonte Inter */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Efeito de transição suave para as checkboxes */
+        .task-checkbox {
+            transition: all 0.2s ease-in-out;
+        }
+        .task-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .task-card {
+             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+
+        <!-- Cabeçalho -->
+        <header class="text-center mb-8">
+            <img src="https://images.weserv.nl/?url=raw.githubusercontent.com/Giovanag30/g30/6dbd2690858bf21423f260550fe0874b2fa935c9/leao.png" alt="Logo da Loja" class="mx-auto h-20 mb-4">
+            <h1 class="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-800 to-black">Missões do Mês</h1>
+            <p id="current-month" class="text-lg text-gray-500 mt-1"></p>
+        </header>
+
+        <!-- Barra de Progresso Geral -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-2 text-gray-700">Progresso Total</h2>
+            <div class="w-full bg-gray-300 rounded-full h-6 shadow-inner">
+                <div id="progress-bar" class="bg-gradient-to-r h-6 text-xs font-medium text-white text-center p-1 leading-none rounded-full" style="width: 0%; transition: width 0.5s ease-in-out;">
+                    <span id="progress-text">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Missões -->
+        <div id="missions-container" class="space-y-4">
+            <!-- As missões serão inseridas aqui dinamicamente pelo JavaScript -->
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- DADOS DAS MISSÕES ---
+            // Adicionamos uma versão para garantir que as missões sejam atualizadas corretamente.
+            const missionsVersion = '12.0_MilenaLeao'; // Versão única para este conjunto de missões
+            // Metas atualizadas com base na reunião com Milena Leão Multimarcas.
+            const initialMissions = [
+                {
+                    id: 1,
+                    title: 'Agendar reunião com Patrick (RH) sobre contratação',
+                    description: 'Definir a estratégia e o perfil ideal para contratar um novo vendedor e uma especialista em consignação.',
+                    status: 'pending'
+                },
+                {
+                    id: 2,
+                    title: 'Retomar a constância das Lives semanais',
+                    description: 'Realizar lives todo sábado (mesmo que curtas) para engajar o público e gerar leads, como a que resultou em venda.',
+                    status: 'pending'
+                },
+                {
+                    id: 3,
+                    title: 'Melhorar o fluxo de prospecção e pré-atendimento',
+                    description: 'Implementar "blocos de ligação" (prospecção em massa) e metrificar o fluxo do SDR (que teve nota baixa no PPL).',
+                    status: 'pending'
+                },
+                {
+                    id: 4,
+                    title: 'Implementar o checklist de avaliação de veículos',
+                    description: 'Utilizar o checklist impresso para registrar avaliações (nota 3/10 no PPL) e aumentar o poder de negociação.',
+                    status: 'pending'
+                },
+                {
+                    id: 5,
+                    title: 'Estruturar e delegar o processo de pós-venda',
+                    description: 'Criar uma rotina de pós-venda que possa ser delegada, descentralizando a responsabilidade do Leão.',
+                    status: 'pending'
+                },
+                {
+                    id: 6,
+                    title: 'Revisar metas (SMART) e custos/margens',
+                    description: 'Analisar a definição de metas (que não estão sendo batidas) e a análise de custos e margens (nota 7/10).',
+                    status: 'pending'
+                }
+            ];
+
+            const missionsContainer = document.getElementById('missions-container');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const storageKey = 'dashboardMissionsData'; // Chave de armazenamento mais específica
+
+            // Função para obter as missões do localStorage ou usar os dados iniciais
+            function getMissions() {
+                const savedDataJSON = localStorage.getItem(storageKey);
+                const currentMonth = new Date().getMonth().toString();
+
+                if (savedDataJSON) {
+                    try {
+                        const savedData = JSON.parse(savedDataJSON);
+                        // Verifica se a versão e o mês correspondem para evitar carregar dados antigos
+                        if (savedData.version === missionsVersion && savedData.month === currentMonth) {
+                            return savedData.missions;
+                        }
+                    } catch (e) {
+                        console.error("Erro ao carregar dados salvos:", e);
+                        // Limpa o item com erro para evitar problemas futuros
+                        localStorage.removeItem(storageKey);
+                    }
+                }
+                
+                // Se não houver dados salvos, a versão for diferente ou o mês mudou,
+                // retorna as missões iniciais e prepara para salvar.
+                return initialMissions.map(m => ({...m, status: 'pending'}));
+            }
+
+            let missions = getMissions();
+            
+            // Salva o estado inicial correto na primeira vez que o script é carregado
+            saveMissions();
+
+            // Função para salvar as missões no localStorage
+            function saveMissions() {
+                const currentMonth = new Date().getMonth().toString();
+                const dataToSave = {
+                    version: missionsVersion,
+                    month: currentMonth,
+                    missions: missions
+                };
+                localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+            }
+            
+            // Função para atualizar o status de uma missão
+            function toggleMissionStatus(id) {
+                const mission = missions.find(m => m.id === id);
+                if (mission) {
+                    mission.status = mission.status === 'pending' ? 'completed' : 'pending';
+                    saveMissions();
+                    renderMissions();
+                    updateProgress();
+                }
+            }
+            
+            // Função para atualizar a barra de progresso
+            function updateProgress() {
+                const completedMissions = missions.filter(m => m.status === 'completed').length;
+                const totalMissions = missions.length;
+                const percentage = totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
+
+                progressBar.style.width = `${percentage}%`;
+                progressText.textContent = `${percentage}%`;
+                
+                // Remove todas as classes de gradiente antes de adicionar a correta
+                progressBar.classList.remove('from-gray-700', 'to-black', 'from-emerald-400', 'to-green-500', 'from-green-500', 'to-green-600');
+
+                if (percentage === 100) {
+                     progressBar.classList.add('from-emerald-400', 'to-green-500');
+                } else {
+                     progressBar.classList.add('from-green-500', 'to-green-600');
+                }
+            }
+            
+            // Função para renderizar (desenhar) as missões na tela
+            function renderMissions() {
+                missionsContainer.innerHTML = ''; 
+
+                if (missions.length === 0) {
+                    missionsContainer.innerHTML = `
+                        <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                            <p class="text-gray-500">Nenhuma missão definida para este mês.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                missions.forEach(mission => {
+                    const isCompleted = mission.status === 'completed';
+                    const cardClasses = isCompleted ? 'bg-green-50 opacity-70 border-l-4 border-green-500' : 'bg-white border-l-4 border-yellow-400';
+                    const titleClasses = isCompleted ? 'text-gray-500 line-through' : 'text-gray-800';
+                    const checkboxClasses = isCompleted ? 'bg-green-500 border-green-500' : 'bg-white';
+                    const iconVisibility = isCompleted ? 'block' : 'hidden';
+
+                    const missionCard = `
+                        <div class="task-card flex items-start p-4 rounded-lg shadow-sm ${cardClasses}">
+                            <div class="flex items-center h-6">
+                                <div class="relative flex items-center justify-center w-6 h-6 rounded-md border-2 border-gray-300 cursor-pointer ${checkboxClasses} task-checkbox" onclick="toggleMissionStatus(${mission.id})">
+                                    <i class="ph-check text-white font-bold text-lg ${iconVisibility}"></i>
+                                </div>
+                            </div>
+                            <div class="ml-4 flex-1">
+                                <h3 class="font-semibold text-lg ${titleClasses}">${mission.title}</h3>
+                                <p class="text-gray-500">${mission.description}</p>
+                            </div>
+                        </div>
+                    `;
+                    missionsContainer.innerHTML += missionCard;
+                });
+            }
+
+            // Define o mês atual no cabeçalho
+            function setCurrentMonth() {
+                const monthEl = document.getElementById('current-month');
+                const now = new Date();
+                const monthName = now.toLocaleString('pt-BR', { month: 'long' });
+                const year = now.getFullYear();
+                monthEl.textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${year}`;
+            }
+
+            // Função de inicialização
+            function init() {
+                window.toggleMissionStatus = toggleMissionStatus; // Torna a função acessível globalmente para o onclick
+                setCurrentMonth();
+                renderMissions();
+                updateProgress();
+            }
+
+            init();
+        });
+    </script>
+
+</body>
+</html>
+
+
+
+
